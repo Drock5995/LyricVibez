@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { PreparedLyric, Theme, AspectRatio, TimedLyric } from '../types';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
 if (!apiKey) {
     throw new Error('VITE_GEMINI_API_KEY environment variable is required');
 }
