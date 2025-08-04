@@ -1,0 +1,6 @@
+{
+  "name": "LyricVibez",
+  "description": "Upload a song and provide lyrics, and let AI create a beautiful, creatively timed lyric video for you with a custom-generated background.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
