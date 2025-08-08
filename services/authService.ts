@@ -12,7 +12,7 @@ interface User {
 
 class AuthService {
   private user: User | null = null;
-  private apiUrl = 'http://localhost:3001/api';
+  private apiUrl = 'http://localhost:3000/api';
 
   constructor() {
     this.loadUser();
@@ -28,7 +28,8 @@ class AuthService {
   private async verifyToken(token: string) {
     try {
       const response = await fetch(`${this.apiUrl}/auth/verify`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       });
       if (response.ok) {
         this.user = await response.json();
@@ -43,7 +44,10 @@ class AuthService {
   async login(email: string, password: string): Promise<User> {
     const response = await fetch(`${this.apiUrl}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
       body: JSON.stringify({ email, password })
     });
 
@@ -61,6 +65,7 @@ class AuthService {
     const response = await fetch(`${this.apiUrl}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, password, name })
     });
 
@@ -150,6 +155,12 @@ class AuthService {
     if (!this.user) return 0;
     const limit = DAILY_LIMITS[this.user.plan];
     return limit === Infinity ? Infinity : Math.max(0, limit - this.user.videosToday);
+  }
+
+  private getCSRFToken(): string | null {
+    const cookies = document.cookie.split(';');
+    const csrfCookie = cookies.find(cookie => cookie.trim().startsWith('csrf-token='));
+    return csrfCookie ? csrfCookie.split('=')[1] : null;
   }
 }
 

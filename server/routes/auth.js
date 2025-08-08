@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const router = express.Router();
 
@@ -9,6 +10,11 @@ router.post('/register', async (req, res) => {
     
     if (!email || !password || !name) {
       return res.status(400).json({ message: 'All fields required' });
+    }
+    
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ message: 'Database not available' });
     }
     
     const existingUser = await User.findOne({ email });
@@ -34,14 +40,19 @@ router.post('/register', async (req, res) => {
       token
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Registration error details:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    // Check if MongoDB is connected
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ message: 'Database not available' });
+    }
     
     const user = await User.findOne({ email });
     if (!user || !(await user.comparePassword(password))) {
@@ -63,7 +74,8 @@ router.post('/login', async (req, res) => {
       token
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Login error details:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

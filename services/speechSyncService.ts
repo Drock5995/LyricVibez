@@ -47,7 +47,7 @@ export const autoSyncLyrics = async (
 ): Promise<TimedLyric[]> => {
   return new Promise((resolve, reject) => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      reject(new Error('Speech recognition not supported in this browser'));
+      reject(new Error('MANUAL_SYNC_REQUIRED'));
       return;
     }
 
@@ -117,7 +117,7 @@ export const autoSyncLyrics = async (
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
-      reject(new Error(`Speech recognition failed: ${event.error}`));
+      reject(new Error('MANUAL_SYNC_REQUIRED'));
     };
     
     recognition.onend = () => {
@@ -137,21 +137,17 @@ export const autoSyncLyrics = async (
       resolve(timedLyrics);
     };
 
+    // Don't auto-play audio - just start recognition
     audio.onloadeddata = () => {
-      audio.play();
       recognition.start();
     };
-
-    audio.onended = () => {
-      recognition.stop();
-    };
     
-    // Timeout fallback
+    // Timeout fallback - trigger manual sync
     setTimeout(() => {
-      if (timedLyrics.length === 0) {
+      if (timedLyrics.length < lyrics.length * 0.5) {
         recognition.stop();
-        reject(new Error('Speech recognition timeout - no lyrics detected'));
+        reject(new Error('MANUAL_SYNC_REQUIRED'));
       }
-    }, audio.duration * 1000 + 5000);
+    }, 30000); // 30 second timeout
   });
 };

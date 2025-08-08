@@ -172,35 +172,41 @@ export const autoSyncWithAI = async (
         audio.onloadedmetadata = () => resolve(audio.duration);
     });
 
-    const prompt = `
-You are an expert audio engineer with perfect pitch and timing. Analyze this ${Math.round(audioDuration)}s audio file and create precise vocal timing synchronization.
+    // Enhanced audio analysis
+    const audioBuffer = await audioFile.arrayBuffer();
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const decodedAudio = await audioContext.decodeAudioData(audioBuffer);
+    const audioFeatures = extractAudioFeatures(decodedAudio);
 
-**CRITICAL INSTRUCTIONS:**
-1. Listen for the EXACT moment each vocal phrase begins - not instrumental parts
-2. Account for intro/outro instrumental sections
-3. Detect natural pauses, breaths, and vocal phrasing
-4. Consider song structure patterns (verse/chorus timing)
-5. Each line duration should match actual vocal length (1.5-5s typical)
-6. NO overlapping timestamps - ensure clean transitions
-7. Add confidence score (0.0-1.0) for each timing
+    const prompt = `
+You are an expert audio engineer analyzing a ${Math.round(audioDuration)}s song. Use these audio characteristics for precise vocal timing:
+
+**AUDIO ANALYSIS:**
+- Duration: ${audioDuration}s
+- Average Energy: ${audioFeatures.avgEnergy.toFixed(4)}
+- Peak Energy: ${audioFeatures.peakEnergy.toFixed(4)}
+- Vocal Segments: ${audioFeatures.vocalSegments.length}
+- Estimated BPM: ${audioFeatures.estimatedBPM}
+
+**ENHANCED TIMING STRATEGY:**
+1. Focus on energy peaks above ${(audioFeatures.avgEnergy * 1.2).toFixed(4)} for vocal onsets
+2. Use spectral changes to detect phrase boundaries
+3. Account for natural breathing patterns and pauses
+4. Match timing to detected vocal segments
+5. Ensure smooth transitions between lyrics
 
 **LYRICS TO SYNC (${lyrics.length} lines):**
-${lyrics.map((l, i) => `${i + 1}. [${l.section}] ${l.line}`).join('\n')}
+${lyrics.map((l, i) => `${i + 1}. [${l.section}] "${l.line}" (${l.line.split(' ').length} words)`).join('\n')}
 
-**ANALYSIS PROCESS:**
-- First pass: Identify vocal start/end points
-- Second pass: Match lyrics to vocal segments
-- Third pass: Refine timing for natural flow
-- Final pass: Validate no gaps/overlaps
+**PRECISION REQUIREMENTS:**
+- Match vocal onsets to audio energy peaks
+- Each line: 1.2-6.0s duration based on complexity
+- Gaps between lines: 0.1-2.0s for natural flow
+- High confidence scores (0.8+) for clear vocals
+- No overlapping timestamps
+- Account for intro/outro instrumental sections
 
-**OUTPUT REQUIREMENTS:**
-- Preserve exact lyric text and metadata
-- startTime: precise vocal onset (seconds, 1 decimal)
-- endTime: natural vocal phrase end
-- confidence: timing accuracy (0.8+ preferred)
-- Total duration should not exceed ${Math.round(audioDuration)}s
-
-Return optimized timing data as JSON array.`;
+Return precise JSON timing array with optimized synchronization.`;
 
     const response = await withRetries(() => ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -252,10 +258,142 @@ Return optimized timing data as JSON array.`;
             };
         });
         
-        return optimizedLyrics as TimedLyric[];
+        return optimizeTimingResults(syncedLyrics, audioDuration, audioFeatures);
     } catch (e) {
         throw new Error("AI failed to sync lyrics with audio. Please try manual timing.");
     }
+};
+
+// Extract detailed audio features for better sync accuracy
+const extractAudioFeatures = (audioBuffer: AudioBuffer) => {
+    const channelData = audioBuffer.getChannelData(0);
+    const sampleRate = audioBuffer.sampleRate;
+    const duration = audioBuffer.duration;
+    
+    // Analyze in 50ms windows for high precision
+    const windowSize = Math.floor(sampleRate * 0.05);
+    const energyLevels = [];
+    const spectralCentroids = [];
+    
+    for (let i = 0; i < channelData.length; i += windowSize) {
+        const window = channelData.slice(i, i + windowSize);
+        
+        // RMS energy
+        const rms = Math.sqrt(window.reduce((sum, sample) => sum + sample * sample, 0) / window.length);
+        energyLevels.push(rms);
+        
+        // Spectral centroid (brightness)
+        const centroid = calculateSpectralCentroid(window, sampleRate);
+        spectralCentroids.push(centroid);
+    }
+    
+    const avgEnergy = energyLevels.reduce((a, b) => a + b, 0) / energyLevels.length;
+    const peakEnergy = Math.max(...energyLevels);
+    
+    // Detect vocal segments (high energy + high spectral centroid)
+    const vocalSegments = [];
+    const energyThreshold = avgEnergy * 1.5;
+    const centroidThreshold = spectralCentroids.reduce((a, b) => a + b, 0) / spectralCentroids.length * 1.2;
+    
+    for (let i = 0; i < energyLevels.length; i++) {
+        if (energyLevels[i] > energyThreshold && spectralCentroids[i] > centroidThreshold) {
+            const timeStamp = (i * windowSize) / sampleRate;
+            vocalSegments.push(timeStamp);
+        }
+    }
+    
+    // Estimate BPM from energy peaks
+    const estimatedBPM = estimateBPM(energyLevels, duration);
+    
+    return {
+        duration,
+        avgEnergy,
+        peakEnergy,
+        vocalSegments,
+        estimatedBPM
+    };
+};
+
+const calculateSpectralCentroid = (window: Float32Array, sampleRate: number): number => {
+    let weightedSum = 0;
+    let magnitudeSum = 0;
+    
+    for (let i = 1; i < window.length / 2; i++) {
+        const magnitude = Math.abs(window[i]);
+        const frequency = (i * sampleRate) / window.length;
+        weightedSum += frequency * magnitude;
+        magnitudeSum += magnitude;
+    }
+    
+    return magnitudeSum > 0 ? weightedSum / magnitudeSum : 0;
+};
+
+const estimateBPM = (energyLevels: number[], duration: number): number => {
+    const avgEnergy = energyLevels.reduce((a, b) => a + b, 0) / energyLevels.length;
+    const peaks = [];
+    
+    for (let i = 1; i < energyLevels.length - 1; i++) {
+        if (energyLevels[i] > energyLevels[i - 1] && 
+            energyLevels[i] > energyLevels[i + 1] && 
+            energyLevels[i] > avgEnergy * 1.3) {
+            peaks.push(i);
+        }
+    }
+    
+    if (peaks.length < 2) return 120;
+    
+    const intervals = [];
+    for (let i = 1; i < peaks.length; i++) {
+        intervals.push(peaks[i] - peaks[i - 1]);
+    }
+    
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    const windowDuration = duration / energyLevels.length;
+    const beatInterval = avgInterval * windowDuration;
+    
+    return Math.round(60 / beatInterval);
+};
+
+// Advanced timing optimization
+const optimizeTimingResults = (results: any[], duration: number, audioFeatures: any): TimedLyric[] => {
+    return results.map((lyric, index) => {
+        const nextLyric = results[index + 1];
+        const prevLyric = results[index - 1];
+        
+        let { startTime, endTime } = lyric;
+        
+        // Snap to nearest vocal segment if close
+        const nearestVocalSegment = audioFeatures.vocalSegments.find(
+            (segment: number) => Math.abs(segment - startTime) < 0.5
+        );
+        if (nearestVocalSegment) {
+            startTime = nearestVocalSegment;
+        }
+        
+        // Dynamic duration based on lyric complexity
+        const wordCount = lyric.line.split(' ').length;
+        const baseRate = audioFeatures.estimatedBPM > 140 ? 0.3 : 0.5;
+        const estimatedDuration = Math.max(1.2, Math.min(6, wordCount * baseRate));
+        
+        if (Math.abs(endTime - startTime - estimatedDuration) > 1) {
+            endTime = startTime + estimatedDuration;
+        }
+        
+        // Prevent overlaps
+        const minGap = 0.1;
+        if (prevLyric && startTime < prevLyric.endTime + minGap) {
+            startTime = prevLyric.endTime + minGap;
+        }
+        if (nextLyric && endTime > nextLyric.startTime - minGap) {
+            endTime = nextLyric.startTime - minGap;
+        }
+        
+        return {
+            ...lyric,
+            startTime: Math.max(0, Math.round(startTime * 10) / 10),
+            endTime: Math.min(duration, Math.round(endTime * 10) / 10)
+        };
+    });
 };
 
 export const generateBackgroundImages = async (

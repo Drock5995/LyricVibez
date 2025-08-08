@@ -14,7 +14,7 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({ audioUrl, initia
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [zoom, setZoom] = useState(50); // Pixels per second
+  const [zoom, setZoom] = useState(100); // Pixels per second - higher default for better precision
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
@@ -120,7 +120,29 @@ export const TimelineEditor: React.FC<TimelineEditorProps> = ({ audioUrl, initia
             <span className="font-mono text-lg text-gray-300">{formatTime(currentTime)} / {formatTime(duration)}</span>
             <div className="flex-grow"></div>
             <label className="text-sm text-gray-400">Zoom:</label>
-            <input type="range" min="10" max="200" value={zoom} onChange={e => setZoom(Number(e.target.value))} className="w-32 accent-cyan-500"/>
+            <input type="range" min="20" max="400" value={zoom} onChange={e => setZoom(Number(e.target.value))} className="w-32 accent-cyan-500"/>
+            <button 
+              onClick={() => {
+                const audio = audioRef.current;
+                if (audio) {
+                  audio.currentTime = Math.max(0, audio.currentTime - 5);
+                }
+              }}
+              className="btn btn-secondary text-sm px-3 py-1"
+            >
+              -5s
+            </button>
+            <button 
+              onClick={() => {
+                const audio = audioRef.current;
+                if (audio) {
+                  audio.currentTime = Math.min(duration, audio.currentTime + 5);
+                }
+              }}
+              className="btn btn-secondary text-sm px-3 py-1"
+            >
+              +5s
+            </button>
         </div>
 
         <div ref={timelineContainerRef} className="w-full h-96 overflow-x-auto bg-gray-900/70 rounded-2xl p-4 relative border border-gray-700">

@@ -9,12 +9,13 @@ interface LyricTimerProps {
   audioFile: File;
   lyrics: PreparedLyric[];
   onComplete: (timedLyrics: TimedLyric[]) => void;
+  onManualSync: () => void;
   onBack: () => void;
 }
 
 const REACTION_TIME_OFFSET_S = 0.200; 
 
-export const LyricTimer: React.FC<LyricTimerProps> = ({ audioUrl, audioFile, lyrics, onComplete, onBack }) => {
+export const LyricTimer: React.FC<LyricTimerProps> = ({ audioUrl, audioFile, lyrics, onComplete, onManualSync, onBack }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -117,12 +118,18 @@ export const LyricTimer: React.FC<LyricTimerProps> = ({ audioUrl, audioFile, lyr
           return;
         } catch (speechError) {
           console.error('Speech sync also failed:', speechError);
+          if (speechError instanceof Error && speechError.message === 'MANUAL_SYNC_REQUIRED') {
+            onManualSync();
+            return;
+          }
         }
       }
       
-      // Show user-friendly error with suggestions
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Auto-sync failed: ${errorMsg}\n\nTips for better results:\n• Ensure clear audio quality\n• Try with songs that have distinct vocals\n• Use manual timing for complex songs`);
+      // Offer manual sync as fallback
+      const shouldTryManual = confirm('Auto-sync failed. Would you like to try manual sync instead?');
+      if (shouldTryManual) {
+        onManualSync();
+      }
     } finally {
       setIsAutoSyncing(false);
     }

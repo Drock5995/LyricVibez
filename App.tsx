@@ -5,6 +5,7 @@ import { UploadForm } from './components/UploadForm';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LyricTimer } from './components/LyricTimer';
 import { TimelineEditor } from './components/TimelineEditor';
+import ManualSyncEditor from './components/ManualSyncEditor';
 import { PricingModal } from './components/PricingModal';
 import { AuthModal } from './components/AuthModal';
 import { Dashboard } from './components/Dashboard';
@@ -17,7 +18,7 @@ import { TikTokIcon, InfoIcon, CrownIcon } from './components/icons';
 import { authService } from './services/authService';
 import { useDebounce } from './hooks/useDebounce';
 
-type AppState = 'upload' | 'timing' | 'editing' | 'generating' | 'displaying' | 'error';
+type AppState = 'upload' | 'timing' | 'manual-sync' | 'editing' | 'generating' | 'displaying' | 'error';
 
 const App: React.FC = () => {
   // Core asset state
@@ -169,7 +170,22 @@ const App: React.FC = () => {
                             audioFile={audioFile}
                             lyrics={preparedLyrics}
                             onComplete={handleTimingComplete}
+                            onManualSync={() => setAppState('manual-sync')}
                             onBack={handleReset}
+                        />
+                    </div>
+                );
+            }
+            break;
+        case 'manual-sync':
+            if (preparedLyrics && audioFile) {
+                return (
+                    <div className="w-full">
+                        <ManualSyncEditor
+                            audioUrl={URL.createObjectURL(audioFile)}
+                            lyrics={preparedLyrics}
+                            onSyncComplete={handleTimingComplete}
+                            onCancel={() => setAppState('timing')}
                         />
                     </div>
                 );
@@ -233,20 +249,25 @@ const App: React.FC = () => {
                                 </div>
                             )}
                             
-                            <div className="glass-panel p-4">
-                                <h3 className="text-white font-semibold mb-3">Recent Features</h3>
-                                <div className="space-y-2 text-sm text-gray-300">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                        <span>Genre-specific themes</span>
+                            <div className="glass-card p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                                        <span className="text-white text-sm font-bold">✨</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                                        <span>AI-powered sync</span>
+                                    <h3 className="text-white font-bold text-lg">Latest Features</h3>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-pulse"></div>
+                                        <span className="text-gray-200 font-medium">Genre-specific themes</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                                        <span>Multiple aspect ratios</span>
+                                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="w-3 h-3 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full animate-pulse"></div>
+                                        <span className="text-gray-200 font-medium">AI-powered sync</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full animate-pulse"></div>
+                                        <span className="text-gray-200 font-medium">Multiple aspect ratios</span>
                                     </div>
                                 </div>
                             </div>

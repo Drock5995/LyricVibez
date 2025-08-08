@@ -4,18 +4,29 @@ import { MusicIcon } from './icons';
 
 export const Header: React.FC = () => {
     return (
-        <header className="w-full max-w-4xl mx-auto mb-6 md:mb-10 text-center">
-            <div className="flex items-center justify-center gap-3 sm:gap-4 mb-2">
-                <div className="p-3 rounded-full bg-cyan-900/50 border border-cyan-500/30 shadow-[0_0_20px] shadow-cyan-500/30">
-                   <MusicIcon className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-300"/>
+        <header className="w-full max-w-5xl mx-auto mb-12 text-center animate-fade-in">
+            <div className="flex items-center justify-center gap-4 mb-6">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-2xl blur-xl opacity-50 animate-pulse"></div>
+                    <div className="relative p-4 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 shadow-glow">
+                       <MusicIcon className="w-10 h-10 text-cyan-300"/>
+                    </div>
                 </div>
-                <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-gray-200 via-cyan-300 to-pink-400 text-transparent bg-clip-text">
-                    LyricVibez
-                </h1>
+                <div>
+                    <h1 className="text-6xl font-black tracking-tight mb-2">
+                        Lyric<span className="gradient-text">Vibez</span>
+                    </h1>
+                    <div className="w-32 h-1 bg-gradient-to-r from-cyan-500 to-purple-500 mx-auto rounded-full"></div>
+                </div>
             </div>
-            <p className="text-base sm:text-lg text-gray-400 max-w-xl mx-auto">
-                Turn your favorite song into a stunning, AI-powered lyric video in seconds.
+            <p className="text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed font-medium">
+                Transform your favorite songs into stunning, AI-powered lyric videos with professional themes and perfect synchronization.
             </p>
+            <div className="flex justify-center gap-2 mt-6">
+                <span className="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-sm font-semibold border border-cyan-500/30">⚡ AI-Powered</span>
+                <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm font-semibold border border-purple-500/30">🎨 Professional</span>
+                <span className="px-3 py-1 bg-pink-500/20 text-pink-300 rounded-full text-sm font-semibold border border-pink-500/30">⏱️ Instant</span>
+            </div>
         </header>
     );
 };

@@ -16,8 +16,12 @@ const multer = require('multer');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const { generateVideo } = require('./simple-video-gen');
-const authRoutes = require('./routes/auth');
+// const authRoutes = require('./routes/test-auth'); // Test auth
+const authRoutes = require('./routes/auth'); // Real MongoDB auth
 const userRoutes = require('./routes/user');
+const { authenticateToken } = require('./middleware/auth');
+const { csrfProtection } = require('./middleware/csrf');
+const { validateFileUpload, validatePath, sanitizeInput } = require('./middleware/validation');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -47,23 +51,15 @@ app.set('trust proxy', 1);
 
 // CORS middleware
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Origin', 'http://127.0.0.1:5173');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token');
+  res.header('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
   next();
 });
-
-// Input sanitization
-const sanitizeInput = (input) => {
-    if (typeof input !== 'string') return input;
-    return input.replace(/[<>'"&]/g, (char) => {
-        const entities = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '&': '&amp;' };
-        return entities[char];
-    });
-};
 
 // Secure logging
 const secureLog = (message, data = null) => {
@@ -74,13 +70,6 @@ const secureLog = (message, data = null) => {
     } else {
         console.log(sanitizedMessage);
     }
-};
-
-// Path validation
-const validatePath = (filePath, allowedDir) => {
-    const resolved = path.resolve(filePath);
-    const allowed = path.resolve(allowedDir);
-    return resolved.startsWith(allowed);
 };
 
 // File upload configuration
@@ -119,7 +108,7 @@ const authLimiter = rateLimit({
 });
 
 // Video generation endpoint (must come before api-proxy middleware)
-app.post('/generate-video', upload.single('audio'), async (req, res) => {
+app.post('/generate-video', authenticateToken, upload.single('audio'), validateFileUpload, async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No audio file uploaded' });
@@ -199,17 +188,22 @@ app.post('/generate-video', upload.single('audio'), async (req, res) => {
 
 
 
-// Connect to MongoDB Atlas
+// Connect to MongoDB
 mongoose.connect(process.env.DATABASE_URL)
   .then(() => console.log('Connected to MongoDB Atlas'))
   .catch(err => {
     console.error('MongoDB connection error:', err);
-    process.exit(1);
+    console.log('Server will continue without database - some features may not work');
   });
+
+// Test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Server is working', timestamp: new Date().toISOString() });
+});
 
 // API routes with rate limiting
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/user', userRoutes);
+app.use('/api/user', authenticateToken, userRoutes);
 
 // Apply rate limiter to api-proxy
 app.use('/api-proxy', proxyLimiter);
@@ -381,6 +375,17 @@ server.on('upgrade', (request, socket, head) => {
     } else {
         socket.destroy();
     }
+});
+
+// Global error handlers
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Don't exit, just log the error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit, just log the error
 });
 
 server.listen(port, () => {

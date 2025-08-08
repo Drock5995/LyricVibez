@@ -13,7 +13,7 @@ interface UploadFormProps {
 const Step: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
     <div className="flex items-start gap-4 sm:gap-6">
         <div className="flex flex-col items-center">
-            <div className="w-12 h-12 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-cyan-400">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-glow">
                 {icon}
             </div>
         </div>
@@ -88,7 +88,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onStartSync, isLoading }
   ];
 
   return (
-      <div className="w-full max-w-3xl glass-panel p-6 md:p-8 animate-fade-in">
+      <div className="w-full max-w-4xl glass-card p-8 md:p-10 animate-fade-in shadow-glow">
           <form onSubmit={handleSubmit} className="space-y-8">
               <Step icon={<StepOneIcon />} title="Provide Your Audio">
                   <div className="bg-black/20 border border-gray-700/50 rounded-xl p-4 space-y-3">
@@ -127,8 +127,8 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onStartSync, isLoading }
                           <div className="flex flex-col space-y-4">
                               <p className="text-sm font-medium text-gray-300 text-center -mb-2">Find with AI</p>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <input type="text" placeholder="Artist Name" value={artist} onChange={(e) => setArtist(e.target.value)} required className="w-full" />
-                                  <input type="text" placeholder="Song Title" value={songTitle} onChange={(e) => setSongTitle(e.target.value)} className="w-full" />
+                                  <input type="text" placeholder="Artist Name" value={artist} onChange={(e) => setArtist(e.target.value)} required className="input" />
+                                  <input type="text" placeholder="Song Title" value={songTitle} onChange={(e) => setSongTitle(e.target.value)} className="input" />
                               </div>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                   <button type="button" onClick={handleFindLyrics} disabled={!artist.trim() || !songTitle.trim() || isFindingLyrics} className="btn btn-secondary bg-cyan-900/50 border-cyan-500/50 hover:bg-cyan-900/70 disabled:bg-gray-600 disabled:border-gray-500">
@@ -163,7 +163,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onStartSync, isLoading }
                                   onChange={(e) => setLyrics(e.target.value)}
                                   required
                                   rows={12}
-                                  className="w-full resize-none"
+                                  className="input resize-none"
                               />
                           </div>
                       </div>
@@ -207,7 +207,7 @@ export const UploadForm: React.FC<UploadFormProps> = ({ onStartSync, isLoading }
               {formError && <p className="text-sm text-red-400 text-center py-2">{formError}</p>}
 
               <div>
-                  <button type="submit" disabled={!file || !lyrics.trim() || !artist.trim() || isLoading} className="w-full btn btn-primary text-lg">
+                  <button type="submit" disabled={!file || !lyrics.trim() || !artist.trim() || isLoading} className="w-full btn btn-primary text-lg py-4 text-xl font-bold animate-glow">
                       {isLoading ? 'Processing...' : 'Create My Video'}
                   </button>
               </div>
